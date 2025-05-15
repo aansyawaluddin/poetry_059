@@ -64,7 +64,7 @@ class _FormPage2State extends State<FormPage2> {
 
   Future<void> _submitData(BuildContext context) async {
     final url = Uri.parse(
-        'https://script.google.com/macros/s/AKfycbxLufWN1UBhZSzvq49c6RhgFVf8-_TAP3t9uvdjpBsNhQCY8bF4cChz6_S2xcoWhtsg/exec'); // Ganti URL Anda
+        'https://script.google.com/macros/s/AKfycbzRNPA-PrVp05CRjUuQRN4BxFYONZfym4bpHhQl3_ifhR7tm1FDtpwTGQm_Ma3flrua/exec'); // Ganti URL Anda
     final payload = {
       'nama': widget.nama,
       'umur': widget.umur,
@@ -92,16 +92,27 @@ class _FormPage2State extends State<FormPage2> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
-      final respJson = jsonDecode(response.body);
-      if (response.statusCode == 200 && respJson['status'] == 'success') {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Data berhasil dikirim ke Spreadsheet')));
+
+      if (response.statusCode == 200 || response.statusCode == 302) {
+        try {
+          final respJson = jsonDecode(response.body);
+          if (respJson['status'] == 'success') {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Data berhasil dikirim ke Spreadsheet')));
+          } else {
+            throw Exception(respJson['message'] ?? 'Unknown error');
+          }
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Gagal memproses respons dari server: $e')));
+        }
       } else {
-        throw Exception(respJson['message'] ?? 'Unknown error');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Gagal mengirim data: ${response.statusCode}')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal mengirim data: \$e')));
+          .showSnackBar(SnackBar(content: Text('Gagal mengirim data: $e')));
     }
   }
 
