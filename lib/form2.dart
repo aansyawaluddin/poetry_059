@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:poetry_059/home.dart';
 
 class FormPage2 extends StatefulWidget {
   final String nama, umur, kelamin, pelapor, email, phone;
@@ -64,7 +65,7 @@ class _FormPage2State extends State<FormPage2> {
 
   Future<void> _submitData(BuildContext context) async {
     final url = Uri.parse(
-        'https://script.google.com/macros/s/AKfycbzRNPA-PrVp05CRjUuQRN4BxFYONZfym4bpHhQl3_ifhR7tm1FDtpwTGQm_Ma3flrua/exec'); // Ganti URL Anda
+        'https://script.google.com/macros/s/AKfycbwObOyfZvL39GmmuEglfBC-F_gqyxr2-QQ4xkrpOHenYpvSLs3Cksanb2S-hIxs86FG/exec'); // Ganti URL Anda
     final payload = {
       'nama': widget.nama,
       'umur': widget.umur,
@@ -93,26 +94,37 @@ class _FormPage2State extends State<FormPage2> {
         body: jsonEncode(payload),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 302) {
-        try {
-          final respJson = jsonDecode(response.body);
-          if (respJson['status'] == 'success') {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Data berhasil dikirim ke Spreadsheet')));
-          } else {
-            throw Exception(respJson['message'] ?? 'Unknown error');
-          }
-        } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Gagal memproses respons dari server: $e')));
+      // Tangani redirect 302 sebagai sukses
+      if (response.statusCode == 302) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Data berhasil dikirim ke Spreadsheet')));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+
+      // Hanya decode kalau 200
+      if (response.statusCode == 200) {
+        final respJson = jsonDecode(response.body);
+        if (respJson['status'] == 'success') {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Data berhasil dikirim ke Spreadsheet')));
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: ${respJson['message']}')));
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Gagal mengirim data: ${response.statusCode}')));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal kirim: ${response.statusCode}')));
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal mengirim data: $e')));
+          .showSnackBar(SnackBar(content: Text('Exception: $e')));
     }
   }
 
