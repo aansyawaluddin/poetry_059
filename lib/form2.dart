@@ -94,7 +94,6 @@ class _FormPage2State extends State<FormPage2> {
         body: jsonEncode(payload),
       );
 
-      // Tangani redirect 302 sebagai sukses
       if (response.statusCode == 302) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -102,10 +101,7 @@ class _FormPage2State extends State<FormPage2> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
-      }
-
-      // Hanya decode kalau 200
-      if (response.statusCode == 200) {
+      } else if (response.statusCode == 200) {
         final respJson = jsonDecode(response.body);
         if (respJson['status'] == 'success') {
           if (!mounted) return;
@@ -114,7 +110,7 @@ class _FormPage2State extends State<FormPage2> {
         } else {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${respJson['message']}')));
+              SnackBar(content: Text('Error server: ${respJson['message']}')));
         }
       } else {
         if (!mounted) return;
@@ -124,7 +120,7 @@ class _FormPage2State extends State<FormPage2> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Exception: $e')));
+          .showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
     }
   }
 
