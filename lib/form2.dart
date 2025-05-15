@@ -1,5 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class FormPage2 extends StatefulWidget {
@@ -34,18 +35,6 @@ class _FormPage2State extends State<FormPage2> {
   final _terlibatController = TextEditingController();
   final _lokasiPelanggaranController = TextEditingController();
 
-  Future<void> _pickDate() async {
-    DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      _tanggalController.text = DateFormat('yyyy-MM-dd').format(picked);
-    }
-  }
-
   @override
   void dispose() {
     _taksiranController.dispose();
@@ -61,47 +50,60 @@ class _FormPage2State extends State<FormPage2> {
     super.dispose();
   }
 
-  Future<void> _kirimEmail(BuildContext context) async {
-    final subject = 'Laporan dari ${widget.nama}';
-    final body = '''
-Nama: ${widget.nama}
-Umur: ${widget.umur}
-Jenis Kelamin: ${widget.kelamin}
-Pelapor: ${widget.pelapor}
-Email: ${widget.email}
-Nomor Telepon: ${widget.phone}
-Tipe Pelaporan: $_selectedTipe
-Bentuk Gratifikasi: $_selectedGratifikasi
-Taksiran: ${_taksiranController.text}
-Tanggal: ${_tanggalController.text}
-Alamat: ${_alamatController.text}
-Kota: ${_kotaController.text}
-Provinsi: ${_provinsiController.text}
-Kode Pos: ${_kodeposController.text}
-
-Indikasi Pelanggaran: ${_indikasiController.text}
-Cara Pelanggaran Dilakukan: ${_caraController.text}
-Pihak Terlibat: ${_terlibatController.text}
-Lokasi Pelanggaran: ${_lokasiPelanggaranController.text}
-''';
-
-    // encode subject & body
-    final encodedSubject = Uri.encodeComponent(subject);
-    final encodedBody = Uri.encodeComponent(body);
-
-    final Uri mailto = Uri.parse('mailto:kepabono@gmail.com'
-        '?subject=$encodedSubject'
-        '&body=$encodedBody');
-
-    if (await canLaunchUrl(mailto)) {
-      await launchUrl(mailto, mode: LaunchMode.externalNonBrowserApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal membuka email client.')),
-      );
+  Future<void> _pickDate() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      _tanggalController.text = DateFormat('yyyy-MM-dd').format(picked);
     }
   }
 
+  Future<void> _submitData(BuildContext context) async {
+    final url = Uri.parse(
+        'https://script.google.com/macros/s/AKfycbxLufWN1UBhZSzvq49c6RhgFVf8-_TAP3t9uvdjpBsNhQCY8bF4cChz6_S2xcoWhtsg/exec'); // Ganti URL Anda
+    final payload = {
+      'nama': widget.nama,
+      'umur': widget.umur,
+      'kelamin': widget.kelamin,
+      'pelapor': widget.pelapor,
+      'email': widget.email,
+      'phone': widget.phone,
+      'tipePelaporan': _selectedTipe,
+      'bentukGratifikasi': _selectedGratifikasi,
+      'taksiran': _taksiranController.text,
+      'tanggal': _tanggalController.text,
+      'alamat': _alamatController.text,
+      'kota': _kotaController.text,
+      'provinsi': _provinsiController.text,
+      'kodepos': _kodeposController.text,
+      'indikasi': _indikasiController.text,
+      'cara': _caraController.text,
+      'terlibat': _terlibatController.text,
+      'lokasiPelanggaran': _lokasiPelanggaranController.text,
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      );
+      final respJson = jsonDecode(response.body);
+      if (response.statusCode == 200 && respJson['status'] == 'success') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Data berhasil dikirim ke Spreadsheet')));
+      } else {
+        throw Exception(respJson['message'] ?? 'Unknown error');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal mengirim data: \$e')));
+    }
+  }
 
   InputDecoration _inputDecoration(String hint) => InputDecoration(
         hintText: hint,
@@ -266,7 +268,6 @@ Lokasi Pelanggaran: ${_lokasiPelanggaranController.text}
                   validator: (v) =>
                       v == null || v.isEmpty ? 'Kode pos wajib diisi' : null,
                 ),
-
                 const SizedBox(height: 20),
                 const Text("Detail Permasalahan/Aduan",
                     style:
@@ -322,10 +323,10 @@ Lokasi Pelanggaran: ${_lokasiPelanggaranController.text}
                     ),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        _kirimEmail(context);
+                        _submitData(context);
                       }
                     },
-                    child: const Text('Kirim Email'),
+                    child: const Text('Kirim'),
                   ),
                 ),
               ],
